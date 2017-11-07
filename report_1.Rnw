@@ -1,0 +1,163 @@
+\documentclass{report}
+\usepackage[margin=0.8in]{geometry}
+
+\author{Grassroots Research Group Analytics}
+
+%I will possibly use some of my own custom templating to make customized reports more personal
+%%INSERT_CUSTOM_REPORT_TITLE
+\title{Grassroots Organization Report}
+
+\begin{document}
+\maketitle
+
+%initialize
+<<setup, echo=FALSE, include=FALSE>>=
+#setwd('/ntfsl/Dropbox/Grassroots Research Group')
+setwd('/Users/mcandocia/Dropbox/Grassroots Research Group')
+#will require filtering later
+source('fabricate_report.r')
+
+##INSERT_DATA_FRAME_INITIALIZATION_CODE
+@
+
+%first, make each graph, then make captions clearer
+
+\subsection*{Organization Participation}
+<<heardof_organizations, echo=FALSE, fig.width=7, fig.height=4, warning=FALSE, message=FALSE>>=
+plot_survey_data(organizations_heardof, mode='yn')+ggtitle("Question: Which of the following organizations have you heard of?",  
+                                                           subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response')
+@
+
+<<participatedin1y_organizations, echo=FALSE, fig.width=7, fig.height=4, warning=FALSE, message=FALSE>>=
+plot_survey_data(organizations_1y, mode='yn')+ggtitle("Question: Which of the following digital organizations have you \nparticipated in during the past year?",  subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response')
+@
+
+<<participatedin3m_organizations, echo=FALSE, fig.width=7, fig.height=4, warning=FALSE, message=FALSE>>=
+plot_survey_data(organizations_3m, mode='yn')+ggtitle("Question: Which of the following digital organizations have you \nparticipated in during the past 3 months?",  subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response')
+@
+
+\clearpage 
+
+\subsection*{Activity Participation}
+
+<<organization_activity_participation, echo=FALSE, fig.width=7, fig.height=8.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(organization_participation, mode='yn')+ggtitle("Question: Which of the following activities did you\ndo within the above organizations?",  subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response')
+@
+
+<<organization_activity_preference, echo=FALSE, fig.width=7, fig.height=8.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(organization_preference, mode='yn')+ggtitle("Question: Which of the following activities did you\nprefer to do within the above organizations?",  subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response')
+@
+
+<<organization_activity_comparison, echo=FALSE, fig.width=7, fig.height=8.5, warning=FALSE, message=FALSE>>=
+organization_combined_data = rbind(organization_participation %>% mutate(Question='Current Participation'),
+                                   organization_preference %>% mutate(Question='Preference'))
+org_level_order = levels((organization_participation %>% clean_results %>% resort_by_frequency(mode='yn', reverse=TRUE))$variable)
+plot_survey_data(organization_combined_data, mode='yn', level_order=org_level_order)+ggtitle("Comparison of Organization\n Activity Participation and Preference",  subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response') + facet_grid(~Question)
+@
+
+\clearpage
+
+\subsection*{Organization Recruiting}
+<<organization_joining, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(organization_initialcontact, mode='yn')+ggtitle("Question: How did you intitially find\nthe organization(s) you joined?",
+                                                                  subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response')
+@
+
+<<party_volunteer_joining, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(party_volunteerconsideration, mode='yn')+ggtitle("Question: Which of the following parties\nwould you consider volunteering for?",
+                                                                   subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response')
+@
+
+<<grassroots_digital_talking, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(grassroots_discussion, mode='yn')+ggtitle("Question: With whom do you talk about your digital grassroots activities?",
+                                                            subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response')
+@
+
+\clearpage
+
+\subsection*{The Issues}
+
+%do we want to cut off the descriptions from 'e.g.,', since it is mostly for the purpose of the question-taker
+<<important_issues, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(important_issues, mode='ranked')+ggtitle("Prompt: Rank the following issues in order\nof importance from 1 to 5, \nwhere 1 is most important", subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('response')
+@
+
+\clearpage
+
+\subsection*{News Sources}
+
+<<trustworthy_news, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(trustworthy_news, mode='ranked')+ggtitle("Prompt: Rank the following news sources in order\nof trustworthiness from 1 to 3, \nwhere 1 is most trustworthy", subtitle=paste("sample size:", n_unique_responses)) + 
+  xlab('response')
+@
+
+\clearpage
+
+\subsection*{Political Activity}
+<<political_activity, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(activity_1y, mode='', 
+                 val_level_order=c('Much more active','A little more active','About as active as I was last year', 
+                                   'A little less active','Much less active')) +
+  ggtitle("Question: How active are you in political activity\nat the following levels of government\n versus a year ago?",
+           subtitle=paste("sample size:", n_unique_responses))  + xlab('') +
+  theme(legend.text=element_text(size=rel(2.5))) +
+  guides(fill=guide_legend('Relative Frequency'))
+@
+
+\clearpage
+
+\subsection*{Political Alignment}
+
+<<politician_trust, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(electedofficial_trust1y, mode='',
+                 val_level_order=c('I trust them much more','I trust them a little more','I trust them about the same as I did last year',
+                                   'I trust them a little less',' I trust them much less')) + 
+  ggtitle("Question: Compared to a year ago, how much do you trust\nyour elected officials?",
+           subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('Level of Government')  +
+  theme(legend.text=element_text(size=rel(2.5))) +
+  guides(fill=guide_legend('Relative Trust'))
+@
+
+<<lastelection_support, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(support_lastelection, mode='yn')+ggtitle("Question: Who did you support in the last election?",
+                                                           subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('')
+@
+
+<<party_identity, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(party_identity, mode='yn')+ggtitle("Question: Which political party do you identify with?",
+                                                     subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('')
+@
+
+<<dem_confidence, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+plot_survey_data(dem_confidence, mode='yn',
+                 level_order=c('Very Confident','Somewhat confident','A little confident','Not sure','Not at all confident')) + 
+  ggtitle("Question: How confident are you that the Democrats are \nmoving in the right direction?",
+           subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('')
+@
+
+<<dem_progressiveness, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+#print(dem_progressiveneeds)
+plot_survey_data(dem_progressiveneeds, mode='yn',
+                 level_order=c('Much more progressive','A little more progressive','A little less progressive','Much less progressive','Not sure','No Response')) + 
+  ggtitle("Question: How progressive does the Democratic Party need to be?",
+           subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('')
+@
+
+
+
+\end{document}
