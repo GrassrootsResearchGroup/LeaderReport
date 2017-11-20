@@ -4,6 +4,7 @@
 \author{Grassroots Research Group Analytics}
 
 %I will possibly use some of my own custom templating to make customized reports more personal
+%separate file still needs to be made to do this
 %%INSERT_CUSTOM_REPORT_TITLE
 \title{Grassroots Organization Report}
 

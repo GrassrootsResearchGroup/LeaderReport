@@ -1,3 +1,6 @@
+#directory under "setwd(...)" should be changed unless processing.r's directory 
+#change is added again after this file is imported
+
 library(stringi)
 library(plyr)
 library(reshape2)

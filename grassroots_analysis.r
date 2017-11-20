@@ -1,3 +1,5 @@
+#this file is older and isn't necessary, as it contains code found in earlier versions of fabricate_report.r
+
 library(stringi)
 library(plyr)
 library(reshape2)
