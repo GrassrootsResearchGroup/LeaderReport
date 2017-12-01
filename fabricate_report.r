@@ -251,7 +251,16 @@ samplesize <- function(data){
   return(length(unique(data$Response.ID)))
 }
 
-plot_survey_data <- function(data, mode='yn', level_order=NULL, val_level_order=NULL, ...){
+remove_missing_values <- function(data){
+  if ('variable' %in% names(data))
+    data = data %>% filter(!variable %in% c("No Response", "NA", NA, '',' ') & !is.na(variable)) 
+  if ('value' %in% names(data))
+    data = data %>% filter(!value %in% c("No Response", "NA", NA, '', ' ') & !is.na(value))
+  return(data)
+}
+
+#cutoff_threshold allows removal of columns values that are less frequent
+plot_survey_data <- function(data, mode='yn', level_order=NULL, val_level_order=NULL, cutoff_threshold=NULL, ...){
   #remove "No resposne/NA values"
   data = data %>% filter(!variable %in% c("No Response", "NA", NA) & !is.na(variable)) 
   
@@ -260,11 +269,24 @@ plot_survey_data <- function(data, mode='yn', level_order=NULL, val_level_order=
   
   #assign unique number globally so it can be accessed from ggtitle function in parent environment
   n_unique_responses <<- length(unique(data$Response.ID))
-  custom_percent <- function(x){
+  custom_percent <<- function(x){
     percent(x/n_unique_responses)
   }
   
-  data = data %>% clean_results(mode=mode)
+  compressed_percent <<- function(x){
+    ifelse(x/n_unique_responses < 0.1, ' ', custom_percent(x))
+  }
+  
+  data = data %>% clean_results(mode=mode) %>% remove_missing_values()
+  if (!is.null(cutoff_threshold)){
+    if (mode=='yn'){
+      vartable = table((data %>% filter(value=='YES'))$variable)
+      #print(vartable)
+      varcounts = vartable/max(vartable)
+      good_vars = names(varcounts)[varcounts > cutoff_threshold]
+      data = data %>% filter(variable %in% good_vars)
+    }
+  }
   data$n_unique_responses = n_unique_responses
   if (mode=='yn'){
     data = resort_by_frequency(data, mode='yn', reverse=TRUE, ...)
@@ -283,7 +305,8 @@ plot_survey_data <- function(data, mode='yn', level_order=NULL, val_level_order=
     p = (ggplot(data %>% filter(value=='YES'), aes(x=variable)) +
            geom_bar(aes(y=(..count..), fill=(..count..))) + 
            flip + x_axis_switch +
-           scale_y_continuous(label=custom_percent, breaks=seq(0, n_unique_responses, length.out=6)))
+           scale_y_continuous(label=custom_percent, breaks=seq(0, n_unique_responses, length.out=6)) +
+           geom_text(stat='count', aes_q(y=~(..count..) + 0.08, label= bquote(.(custom_percent)((..count..)))), hjust='inward'))
   }
   else if (mode=='ranked'){
     data = resort_by_frequency(data, mode='ranked', reverse=TRUE)
@@ -303,7 +326,9 @@ plot_survey_data <- function(data, mode='yn', level_order=NULL, val_level_order=
            geom_bar() + 
            flip + x_axis_switch + 
            scale_fill_pander('Ranking') +
-           scale_y_continuous(label=custom_percent, breaks=seq(0, n_unique_responses, length.out=6)))
+           scale_y_continuous(label=custom_percent, breaks=seq(0, n_unique_responses, length.out=6)) +
+           geom_text(stat='count', aes_q(group = ~value, label= bquote(.(compressed_percent)((..count..)))), 
+                     position=position_stack(vjust=0.5, reverse=TRUE), size=2.5))
     
   }
   else if (mode==''){
@@ -326,10 +351,12 @@ plot_survey_data <- function(data, mode='yn', level_order=NULL, val_level_order=
       data$variable = factor(data$variable, levels=level_order)
     }
     
-    p = (ggplot(data %>% filter(TRUE), aes(x=variable)) +
-           geom_bar(aes(y=(..count..), fill=value), position=position_stack(reverse=TRUE)) + 
+    p = (ggplot(data %>% filter(TRUE), aes(y=(..count..), x=variable)) +
+           geom_bar(aes( fill=value), position=position_stack(reverse=TRUE)) + 
            flip + x_axis_switch +
-           scale_y_continuous(label=custom_percent, breaks=seq(0, n_unique_responses, length.out=6)))
+           scale_y_continuous(label=custom_percent, breaks=seq(0, n_unique_responses, length.out=6)) +
+           geom_text(stat='count', aes_q(group = ~value, label= bquote(.(compressed_percent)((..count..)))), 
+                     position=position_stack(vjust=0.5, reverse=TRUE), size=2.5))
   }
   if (mode != 'ranked'){
     if (mode=='yn'){
@@ -352,6 +379,10 @@ plot_survey_data <- function(data, mode='yn', level_order=NULL, val_level_order=
                             plot.subtitle=element_text(size=rel(2.5))) +
            fill_func + fill_guide)
 }
+
+#+
+#  geom_text(stat='count', aes_q(group = ~value, label= bquote(.(compressed_percent)((..count..)))), 
+#            position=position_stack(vjust=0.5, reverse=TRUE), size=3)
 
 clean_results <- function(data, ...){
   data %>% org_remapping %>% level_clean %>% resort_by_frequency(...)
@@ -470,7 +501,7 @@ fabricate_report <- function(filename, directory = 'Raw Data DO NOT SHARE',
   #the below fields have changed position..updating
   #Have you heard of organizations? #56-70
   df <<- read.csv(file=paste(directory, filename, sep='/'))
-  organizations_heardof <<- identify_and_expand(df, 'Have.you.heard.of.any.of.the.following.digital.grassroots.organizations.')
+  organizations_heardof <<- identify_and_expand(df, 'Have.you.heard.of.any.of.the.following.digital.grassroots.organizations.') %>% remove_missing_values()
   #expand_column_group(df, colrange=56:70)
   
   #plot_survey_data(organizations_heardof, mode='yn')+ggtitle('test title')
@@ -481,62 +512,62 @@ fabricate_report <- function(filename, directory = 'Raw Data DO NOT SHARE',
   
   # Have you participated in activities with these digital organizations in the past year?
   #71-84
-  organizations_1y <<- identify_and_expand(df, 'In.the.past.year.have.you.ever.participated.in.activities.with.any.of.the.following.digital.organizations.')
+  organizations_1y <<- identify_and_expand(df, 'In.the.past.year.have.you.ever.participated.in.activities.with.any.of.the.following.digital.organizations.') %>% remove_missing_values()
   #expand_column_group(df, colrange=71:84)
   
   
   
   #85-98 - How often do you participate in activities of these organizations in the past 3 months?
-  organizations_3m <<- identify_and_expand(df, 'Have.you.heard.of.any.of.the.following.digital.grassroots.organizations.')
+  organizations_3m <<- identify_and_expand(df, 'Have.you.heard.of.any.of.the.following.digital.grassroots.organizations.') %>% remove_missing_values()
   #expand_column_group(df, colrange=85:98)
   
   #99-121- - What activities do you do in these organizations (select all that apply)
   #123 - does not participate
   #122, 124 -other                                       'In.general..what.types.of.activities.do.you.participate.in.with.these.organizations.Please.select.all.that.apply.'
   organization_participation <<- identify_and_expand(df, 'In.general..what.types.of.activities.do.you.participate.in.with.these.organizations.Please.select.all.that.apply.',
-                                                   other_pair_rel=c(-2,0))
+                                                   other_pair_rel=c(-2,0)) %>% remove_missing_values()
   #expand_column_group(df, colrange=c(99:121,123), other_pair = c(122, 124))
   
   #125-147 - What activities do you prefer to do
   #148, 149 (other for above)
   organization_preference <<- identify_and_expand(df, 'What.types.of.activities.do.you.prefer.to.do.Please.select.all.that.apply.',
-                                                other_pair_rel = c(-1, 0))
+                                                other_pair_rel = c(-1, 0)) %>% remove_missing_values()
   #expand_column_group(df, colrange=125:147, other_pair = 148:149)
   
   #150 - free text (ideas for better engaging volunteers)
-  engagement_ideas = df[,c(1,which(names(df)=="What.ideas.do.you.have.for.better.engaging.volunteers."))]
+  engagement_ideas = df[,c(1,which(names(df)=="What.ideas.do.you.have.for.better.engaging.volunteers."))] %>% remove_missing_values()
   
   #151-160 - How did you initially find your current organization?
   #161, 162 (other for above category)
   organization_initialcontact <<- identify_and_expand(df, 'How.did.you.initially.find.the.organizations.you.are.involved.with.Please.select.all.that.apply.',
-                                                    other_pair_rel = c(-1, 0))
+                                                    other_pair_rel = c(-1, 0)) %>% remove_missing_values()
   #expand_column_group(df, colrange=151:160, other_pair=161:162)
   
   #163-172 - Which of these organizations would you consider volunteering for?
   #173, 174 (other for above category)
   party_volunteerconsideration <<- identify_and_expand(df, 'Which.of.the.following.types.of.organizations.would.you.consider.volunteering.for.Please.select.all.that.apply.',
-                                                     other_pair_rel = c(-1, 0))
+                                                     other_pair_rel = c(-1, 0)) %>% remove_missing_values()
   #expand_column_group(df, colrange=163:172, other_pair = 173:174)
   
   #175-183 - Who do you talk to abooute these digital grassroots activities?
   #184, 186 (other for above category)
   #185 - does not discuss
   grassroots_discussion <<- identify_and_expand(df, 'Who.do.you.talk.with.about.your.digital.grassroots.activities.Please.select.all.that.apply.',
-                                              other_pair_rel = c(-2, 0))
+                                              other_pair_rel = c(-2, 0)) %>% remove_missing_values()
   #expand_column_group(df, colrange=c(175:183, 185), other_pair=c(184,186))
   
   
   #187-196 - How important are these issues to you (ranked from 1-5, 1=most important)
   important_issues <<- identify_and_expand(df, 'Please.rank.the.top.five..5..issues.that.are.most.important.to.you.with..1..being.the.most.important.and..5..being.the.least.important.',
-                                         summary_type='ranked')
+                                         summary_type='ranked') %>% remove_missing_values()
   #expand_column_group(df, colrange=187:196, summary_type='ranked')
   
   #197 (other important issue)
-  other_important_issues <<- df[,c(1,which(names(df)=='What.other.issues.are.important.to.you.'))]
+  other_important_issues <<- df[,c(1,which(names(df)=='What.other.issues.are.important.to.you.'))] %>% remove_missing_values()
   
   #198-216 - top 3 most trusted news sources (ranked from 1-3, 1=most trustworthy)
   trustworthy_news <<- identify_and_expand(df, 'What.are.your.top.three..3..most.trusted.news.sources.',
-                                         summary_type='ranked')
+                                         summary_type='ranked') %>% remove_missing_values()
   #expand_column_group(df, colrange=198:216, summary_type='ranked')
   
   #217-219 - how active are you in organizations at lvl of govt compared to 1 year ago
@@ -548,24 +579,24 @@ fabricate_report <- function(filename, directory = 'Raw Data DO NOT SHARE',
            variable=gsub('.*City.*','City and County',variable),
            variable=gsub('.*State','State',variable),
            variable=gsub('.*Federal','Federal',variable),
-           variable=factor(variable, levels=c('City and County','State','Federal')))
+           variable=factor(variable, levels=c('City and County','State','Federal'))) %>% remove_missing_values()
   #expand_column_group(df, colrange=217:219, summary_type='') %>%
   #220-227 - How much do you trust these officials compared to a year ago?
-  electedofficial_trust1y = identify_and_expand(df, '.Compared.to.one.year.ago.today..how.much.do.you.trust.your.elected.officials.to.act.in.your.best.interest',
-                                                summary_type='') %>%  clean_results(mode='')
+  electedofficial_trust1y <<- identify_and_expand(df, '.Compared.to.one.year.ago.today..how.much.do.you.trust.your.elected.officials.to.act.in.your.best.interest',
+                                                summary_type='') %>%  clean_results(mode='') %>% remove_missing_values()
   #expand_column_group(df, colrange=220:227, summary_type='') %>%
   # clean_results(mode='')
   
   
   #228-231 - How much trust do you have in the government compared to 1y ago?
   govt_trust1y <<- identify_and_expand(df, 'Compared.to.one.year.ago.today..how.much.do.you.confidence.do.you.have.in.the.government.',
-                                     summary_type='')
+                                     summary_type='') %>% remove_missing_values()
   #expand_column_group(df, colrange=228:231, summary_type='')
   
   #232 - Who did you support in the last election?
   #233 (other for above category)
-  candidate_main_idx <<- which(names(df)=="Who.did.you.support.in.the.Presidential.primary.election.in.2016.")
-  candidate_other_idx <<- which(names(df)=="Other...Please.specify.Who.did.you.support.in.the.Presidential.primary.election.in.2016.")
+  candidate_main_idx <<- which(names(df)=="Who.did.you.support.in.the.Presidential.primary.election.in.2016.") %>% remove_missing_values()
+  candidate_other_idx <<- which(names(df)=="Other...Please.specify.Who.did.you.support.in.the.Presidential.primary.election.in.2016.") %>% remove_missing_values()
   
   support_lastelection <<- cbind(data.frame(Response.ID=df[,1], 
                                           variable=ifelse(is_not_empty(df[,c(candidate_main_idx)]), 
@@ -575,7 +606,7 @@ fabricate_report <- function(filename, directory = 'Raw Data DO NOT SHARE',
   )
   ) %>% mutate(variable = as.character(variable), 
                variable=ifelse(is.na(variable), 'No Response', variable),
-               variable=factor(variable))
+               variable=factor(variable)) %>% remove_missing_values()
   
   #234 - Which political party do you identify with?
   #235 (other for above)
@@ -590,36 +621,36 @@ fabricate_report <- function(filename, directory = 'Raw Data DO NOT SHARE',
                                     value='YES')
   ) %>% mutate(variable = as.character(variable), 
                variable=ifelse(is.na(variable), 'No Response', variable),
-               variable=factor(variable))
+               variable=factor(variable)) %>% remove_missing_values()
   
   #236 - How confident are you that dem party is moving in the right direction?
   dem_confidence = df[,c(1,which(names(df)=="How.confident.are.you.that.the.Democratic.Party.is.moving.in.the.right.direction."))] %>% mutate(value='YES')
   names(dem_confidence)[2] = 'variable'
-  dem_confidence <<- dem_confidence %>% mutate(variable = mapvalues(variable, from='', to='No Response'))
+  dem_confidence <<- dem_confidence %>% mutate(variable = mapvalues(variable, from='', to='No Response')) %>% remove_missing_values()
   
   #237 - How much more/less progressive does dem party need to be?
-  dem_progressiveneeds = df[,c(1,which(names(df)=="How.much.more.or.less.progressive.does.the.Democratic.Party.need.to.be.in.its.policy.initiatives."))] 
+  dem_progressiveneeds = df[,c(1,which(names(df)=="How.much.more.or.less.progressive.does.the.Democratic.Party.need.to.be.in.its.policy.initiatives."))] %>% remove_missing_values()
   names(dem_progressiveneeds)[2] = 'variable'
   dem_progressiveneeds <<- dem_progressiveneeds %>% mutate(variable=mapvalues(variable, from='', to='No Response'),
                                                          value='YES')
   dem_progressiveneeds$value = "YES"
-  dem_progressiveneeds <<- dem_progressiveneeds
+  dem_progressiveneeds <<- dem_progressiveneeds %>% remove_missing_values()
   
   #238 - What is the most important thing dem party can do to win more elections (text, I think)
   dem_winneeds <<- df[,c(1,which(names(df)=="What.is.the.most.important.thing.the.Democratic.Party.can.do.to.win.more.elections."))] %>%
-    mutate(value="YES")
+    mutate(value="YES") %>% remove_missing_values()
   
   #239 - What characteristics do you value in your elected officials (text, I think)
-  official_valuedcharacteristics <<- df[,c(1,which(names(df)=="What.characteristics.do.you.value.in.your.elected.officials."))]
+  official_valuedcharacteristics <<- df[,c(1,which(names(df)=="What.characteristics.do.you.value.in.your.elected.officials."))] %>% remove_missing_values()
   
   #240 - Which local, state, or national elected official do you like the most?
-  favorite_official <<- df[,c(1,which(names(df)=="Which.local..state..or.national.elected.official.do.you.like.the.most."  ))]
+  favorite_official <<- df[,c(1,which(names(df)=="Which.local..state..or.national.elected.official.do.you.like.the.most."  ))] %>% remove_missing_values()
   
   #241 - Which local, state, or national elected official do you like the least?
-  hated_official <<- df[,c(1,which(names(df)=="Which.local..state..or.national.elected.official.do.you.like.the.least."  ))]
+  hated_official <<- df[,c(1,which(names(df)=="Which.local..state..or.national.elected.official.do.you.like.the.least."  ))] %>% remove_missing_values()
   
   #242 - Additional comments
-  additional_comments <<- df[,c(1,which(names(df)=="What.additional.comments..thoughts..or.concerns.would.you.like.to.share.with.us."))]
+  additional_comments <<- df[,c(1,which(names(df)=="What.additional.comments..thoughts..or.concerns.would.you.like.to.share.with.us."))] %>% remove_missing_values()
   
   
   #at this point, use these functions in .Rnw file...

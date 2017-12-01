@@ -21,8 +21,12 @@ for (file in csv_files){
 library(dplyr)
 
 master_df = bind_rows(data_list)
+master_df$Response.ID = 1:nrow(master_df)
 
 master_filename = paste0(subdir,'/MASTER_DATA_FRAME.csv')
 write.csv(master_df, file=master_filename, row.names=FALSE)
 
+#this directory will be changed by the R code in report_1.Rnw
+setwd('/ntfsl/Dropbox/Grassroots Research Group')
+source('/ntfsl/workspace/GrassrootsAnalytics/LeaderReport/fabricate_report.r')
 fabricate_report('MASTER_DATA_FRAME.csv')
