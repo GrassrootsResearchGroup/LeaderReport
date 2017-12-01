@@ -14,8 +14,8 @@ library(knitr)
 #source('/Users/mcandocia/Documents/sweatex.r')
 
 #setwd('/Users/mcandocia/Downloads')
-#setwd('/ntfsl/Dropbox/Grassroots Research Group')
-setwd('/Users/mcandocia/Dropbox/Grassroots Research Group')
+setwd('/ntfsl/Dropbox/Grassroots Research Group')
+#setwd('/Users/mcandocia/Dropbox/Grassroots Research Group')
 sweatex <- function(filename,extension='Rnw',command='pdflatex',silent=FALSE,preview=FALSE)
 {
   if (command=='latex') command='simpdftex latex --maxpfb'
@@ -650,7 +650,7 @@ fabricate_report <- function(filename, directory = 'Raw Data DO NOT SHARE',
     print(fig.path)
     #opts_knit$set(base.dir=fig.path)
     dir.create(fig.path, showWarnings=FALSE)
-    knit('report_1.Rnw', output=paste0('tex/', tex_output_filename))
+    knit('/ntfsl/workspace/GrassrootsAnalytics/LeaderReport/report_1.Rnw', output=paste0('tex/', tex_output_filename))
     system(paste('pdflatex',
                  paste0('-output-directory=',output_directory),
                  paste0('tex/', tex_output_filename)

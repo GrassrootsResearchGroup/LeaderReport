@@ -13,10 +13,10 @@
 
 %initialize
 <<setup, echo=FALSE, include=FALSE>>=
-#setwd('/ntfsl/Dropbox/Grassroots Research Group')
-setwd('/Users/mcandocia/Dropbox/Grassroots Research Group')
+setwd('/ntfsl/Dropbox/Grassroots Research Group')
+#setwd('/Users/mcandocia/Dropbox/Grassroots Research Group')
 #will require filtering later
-source('fabricate_report.r')
+source('/ntfsl/workspace/GrassrootsAnalytics/LeaderReport/fabricate_report.r')
 
 ##INSERT_DATA_FRAME_INITIALIZATION_CODE
 @
