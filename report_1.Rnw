@@ -26,7 +26,7 @@ source('/ntfsl/workspace/GrassrootsAnalytics/LeaderReport/fabricate_report.r')
 \subsection*{Organization Participation}
 <<heardof_organizations, echo=FALSE, fig.width=7, fig.height=4, warning=FALSE, message=FALSE>>=
 n_unique_responses = samplesize(organizations_heardof)
-plot_survey_data(organizations_heardof, mode='yn', cutoff_threshold=0.2)+ggtitle("Question: Which of the following organizations have you heard of?",  
+plot_survey_data(organizations_heardof, mode='yn', cutoff_threshold=0.2)+ggtitle("Question: Which of the following organizations \nhave you heard of?",  
                                                            subtitle=paste("sample size:", n_unique_responses)) +
   xlab('response')
 @
@@ -61,7 +61,7 @@ plot_survey_data(organization_preference, mode='yn', cutoff_threshold=0.03)+ggti
 organization_combined_data = rbind(organization_participation %>% mutate(Question='Current Participation'),
                                    organization_preference %>% mutate(Question='Preference'))
 org_level_order = levels((organization_participation %>% clean_results %>% resort_by_frequency(mode='yn', reverse=TRUE))$variable)
-plot_survey_data(organization_combined_data, mode='yn', level_order=org_level_order, , cutoff_threshold=0.03)+ggtitle("Comparison of Organization\n Activity Participation and Preference",  subtitle=paste("sample size:", n_unique_responses)) +
+plot_survey_data(organization_combined_data, mode='yn', level_order=org_level_order, , cutoff_threshold=0.03)+ggtitle("Comparison of Organization Activity \nParticipation and Preference",  subtitle=paste("sample size:", n_unique_responses)) +
   xlab('response') + facet_grid(~Question)
 @
 
@@ -169,11 +169,60 @@ n_unique_responses = samplesize(dem_progressiveneeds %>% remove_missing_values()
 #print(dem_progressiveneeds)
 plot_survey_data(dem_progressiveneeds %>% remove_missing_values(), mode='yn',
                  level_order=c('Much more progressive','A little more progressive','About as progressive as they are now', 'A little less progressive','Much less progressive','Not sure','No Response')) + 
-  ggtitle("Question: How progressive does the Democratic Party need to be?",
+  ggtitle("Question: How progressive does the Democratic Party \nneed to be?",
            subtitle=paste("sample size:", n_unique_responses)) +
   xlab('')
   #print(dem_progressiveneeds %>% remove_missing_values())
 @
+
+\clearpage
+
+\section*{Demographics}
+%race, gender, employment, income
+
+<<demographics_gender, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+n_unique_responses = samplesize(gender_demographics)
+
+plot_survey_data(gender_demographics, mode='yn',
+                 val_level_order=c('Female','Male','Gender variant/Non-conforming')) + 
+  ggtitle("What is your current gender identity?",
+           subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('Gender')  +
+  theme(legend.text=element_text(size=rel(2.5))) 
+@
+
+<<demographics_race, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+n_unique_responses = samplesize(race_demographics)
+
+plot_survey_data(race_demographics, mode='yn') + 
+  ggtitle("What is your race/ethnicity?",
+           subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('Race/Ethnicity')  +
+  theme(legend.text=element_text(size=rel(2.5))) 
+@
+
+<<demographics_employment, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+n_unique_responses = samplesize(employment_demographics)
+
+plot_survey_data(employment_demographics, mode='yn') + 
+  ggtitle("What is your current employment status?",
+           subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('Employment Status')  +
+  theme(legend.text=element_text(size=rel(2.5))) 
+@
+
+<<demographics_income, echo=FALSE, fig.width=7, fig.height=4.5, warning=FALSE, message=FALSE>>=
+n_unique_responses = samplesize(income_demographics)
+
+plot_survey_data(income_demographics, mode='yn',
+                 level_order=rev(c('$200,000 or more','$150,000 to $199,999','$100,000 to $149,999','$75,000 to $99,999','$50,000 to $74,999',
+                               '$35,000 to $49,999', '$25,000 to $34,999', 'Less than $25,000', 'I prefer not to answer'))) + 
+  ggtitle("What was your total household income in 2016 (before taxes)?",
+           subtitle=paste("sample size:", n_unique_responses)) +
+  xlab('Income Range')  +
+  theme(legend.text=element_text(size=rel(2.5))) 
+@
+
 
 %\clearpage
 

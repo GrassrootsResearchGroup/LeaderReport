@@ -38,6 +38,12 @@ sweatex <- function(filename,extension='Rnw',command='pdflatex',silent=FALSE,pre
 #setwd('/Users/mcandocia/Dropbox/Grassroots Research Group')
 df = read.csv('20171002191600-SurveyExport.csv')
 
+refactor <- function(x, valid_levels, column_index=2){
+  x[,column_index] = as.character(x[,column_index]) 
+  x[,column_index] = ifelse(x[,column_index] %in% valid_levels, x[,column_index], 'Other')
+  x[,column_index] = factor(x[,column_index])
+  return(x)
+}
 
 all_are_same <- function(x){
   length(unique(x))==1
@@ -251,7 +257,13 @@ samplesize <- function(data){
   return(length(unique(data$Response.ID)))
 }
 
-remove_missing_values <- function(data){
+remove_missing_values <- function(data, variable_name_pos=NULL, add_yes_value_var=FALSE){
+  if (!is.null(variable_name_pos)){
+    names(data)[variable_name_pos] = 'variable'
+  }
+  if (add_yes_value_var){
+    data$value="YES"
+  }
   if ('variable' %in% names(data))
     data = data %>% filter(!variable %in% c("No Response", "NA", NA, '',' ') & !is.na(variable)) 
   if ('value' %in% names(data))
@@ -294,7 +306,7 @@ plot_survey_data <- function(data, mode='yn', level_order=NULL, val_level_order=
     if (!is.null(level_order)){
       data$variable = factor(data$variable, levels=level_order)
     }
-    if (ngroups > 4){
+    if (ngroups > 0){
       flip = coord_flip()
       x_axis_switch = NULL#scale_y_reverse()
     }
@@ -651,6 +663,22 @@ fabricate_report <- function(filename, directory = 'Raw Data DO NOT SHARE',
   
   #242 - Additional comments
   additional_comments <<- df[,c(1,which(names(df)=="What.additional.comments..thoughts..or.concerns.would.you.like.to.share.with.us."))] %>% remove_missing_values()
+  
+  #DEMOGRAPHICS
+
+  race_demographics <<- identify_and_expand(df, 'What.is.your.race.ethnicity.',
+                                            other_pair_rel=c(-2,-1), summary_type='') %>% remove_missing_values() %>%
+    refactor(valid_levels=c('White','Asian','Black or African American','Hispanic or Latino','Native Hawaiian/Pacific Islander',
+                            'American Indian or Alaskan Native'), column_index=3)
+  names(race_demographics)[3] = 'variable';race_demographics$value="YES"
+  race_demographics[,2] = NULL
+  
+  gender_demographics <<- df[,c('Response.ID', 'What.is.your.current.gender.identity.')] %>% remove_missing_values(2, TRUE)
+  
+  employment_demographics <<- df[,c('Response.ID','What.is.your.current.employment.status.')] %>% remove_missing_values(2, TRUE)
+  
+  income_demographics <<- df[,c('Response.ID','What.was.your.total.household.income..before.taxes..in.2016.')] %>% remove_missing_values(2, TRUE)
+  
   
   
   #at this point, use these functions in .Rnw file...
